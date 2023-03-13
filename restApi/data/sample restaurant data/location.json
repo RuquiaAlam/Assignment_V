@@ -1,4 +1,5 @@
-[
+const location = ([
+
     {
         "_id": "1",
         "name": "ShalimarBhagh, Delhi",
@@ -55,4 +56,4 @@
         "location_id": "5",
         "country_name": "India"
     }
-]
+])
