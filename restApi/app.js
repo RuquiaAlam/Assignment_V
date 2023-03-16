@@ -24,7 +24,7 @@ app.use(bodyParser.json());
 const PORT  = 9002;
 const authkey ="9e9d7a08e048e9d604b79460b54969c3";
 function auth(key){
-  if(authkey==key)
+  if(authkey == key)
 {
   return true;
 
@@ -1270,7 +1270,43 @@ app.get("/", (req, res) => {
     res.send("Hello everyone!!!!🥳🥳😉😉😉");
   });
 
+//api restaurant details on Object id
 
+app.get("/details/:id" ,(req,res)=>
+  {
+    let id =mongo.ObjectId(req.params.id);
+ 
+  
+
+  
+    db.collection("RestaurantData").find({_id:id}).toArray((err,result) =>
+    {
+      if(err)
+      throw err;
+      res.send(result);
+
+    });
+
+  });
+
+  
+//api restaurant details on Restaurant id
+app.get("/detailsrestaurantid/:restaurantid" ,(req,res)=>
+{
+  let restaurantid =Number(req.params.restaurantid);
+
+
+
+
+  db.collection("RestaurantData").find({restaurant_id : restaurantid}).toArray((err,result) =>
+  {
+    if(err)
+    throw err;
+    res.send(result);
+
+  });
+
+});
 
 
     // location endpoint
@@ -1295,15 +1331,25 @@ app.get("/", (req, res) => {
       let query ={}
       let stateId = Number(req.query.stateId);
       let mealId =Number(req.query.mealId);
-      if(stateId)
+      if(stateId &&mealId )
 {
-  query = { state_id : stateId};
+  query = { state_id : stateId,"mealTypes.mealtype_id" : mealId };
+}
+
+else if(stateId)
+{
+  query = {state_id : stateId };
+}
+else if(mealId)
+{
+query ={"mealTypes.mealtype_id" : mealId }
+}
+else
+{
+  query ={}
 
 }
-  else if(mealId){
-    query = {"mealTypes.mealtype_id" : mealId };
-
-  }
+  
 
 db.collection("RestaurantData").find(query).toArray((err,result)=>
   {
@@ -1340,7 +1386,9 @@ db.collection("RestaurantData").find(query).toArray((err,result)=>
 // location endpoint
 
 app.get("/location", (req, res)  => {
-  if(auth(req.header('x-auth-key'))){
+let key =req.header('x-auth-key');
+  if(authkey==key)
+  {
 
   db.collection("location").find().toArray((err,result)=>
   {
@@ -1355,24 +1403,45 @@ else{
 
 });
 
-// Mealtype based on id
-// app.get("MealTypebasedonid",(req,res)=>{
+//api end point for mealid and cuisine
+app.get("/cuisine/:mealId",(req,res)=>
+{
+  let mealId = Number(req.params.mealId);
+  let cuisineId = Number(req.query.cuisineId)
+  let lcost = Number(req.query.lcost);
+  let hcost =Number(req.query.hcost);
+  let query ={}
+  //sorting
+  let sort = {cost :1};
+  if(req.query.sort)
+  {
+    sort ={cost :req.query.sort};
+  }
+ if(lcost && hcost && cuisineId)
+ {
+query ={"mealTypes.mealtype_id" : mealId, $and: [{ cost : {$gt : lcost, $lt : hcost}}],
+"cuisines.cuisine_id" : cuisineId }
+ }
 
-// let query ={}
-// let mealtypeid = Number(req.params.mealtype_id);
-// if(mealtype_id)
-// {
-// query ={mealtype_id:mealtypeid}
-// }
-
-
-// db.collection("MealType").find().toArray((err,result)=>
-// {
-//   if(err) throw err;
-//   res.send(result);
-
-// });
-// })
+else if(lcost && hcost)
+{
+  query ={"mealTypes.mealtype_id" : mealId, $and: [{ cost : {$gt : lcost, $lt : hcost}}]}
+}
+  else if(cuisineId)
+  {
+query ={"mealTypes.mealtype_id" : mealId,
+"cuisines.cuisine_id" : cuisineId }  
+  }
+  else{
+    query = {"mealTypes.mealtype_id" : mealId}
+  }
+  db.collection("RestaurantData").find(query).sort(sort).toArray((err,result) =>
+  {
+    if(err)
+    throw err;
+    res.send(result)
+  });
+})
 
 app.get("/MealType",(req,res)=>{
 
@@ -1390,40 +1459,43 @@ app.get("/MealType",(req,res)=>{
   }
 })
 
-//restaurant menu endpoint
+
+
+//restaurant menu endpoint based on menuid
+
+app.get("/RestaurantMenu/:menuid", (req, res)  => {
+
+let menuid= Number(req.params.menuid);
+
+if(menuid)
+{
+  db.collection("RestaurantMenu").find( {restaurant_id : menuid}).toArray((err,result)=>
+  {
+    if(err) throw err;
+    res.send(result);
+
+  })
+}
+
+});
 
 
 
+app.get("/RestaurantData", (req, res)  => 
+{
 
-app.get("/RestaurantMenu", (req, res)  => {
+  
 
-
-
-  db.collection("RestaurantMenu").find().toArray((err,result)=>
+  db.collection("RestaurantData").find().toArray((err,result)=>
   {
     if(err) throw err;
     res.send(result);
 
   })
 
-});
-
-
-// app.get("/RestaurantData", (req, res)  => 
-// {
-
-  
-
-//   db.collection("RestaurantData").find().toArray((err,result)=>
-//   {
-//     if(err) throw err;
-//     res.send(result);
-
-//   })
-
 
  
-// });
+});
 
 
 
@@ -1447,3 +1519,72 @@ db.collection("RestaurantData").find( { address: { $regex: address, $options: "i
 
 
 
+app.get("/Orders", (req, res)  => 
+{
+let email =req.query.email;
+let query={}
+if(email)
+{
+  query ={email}
+}
+
+  
+
+  db.collection("Orders").find(query).toArray((err,result)=>
+  {
+    if(err) throw err;
+    res.send(result);
+
+  })
+
+
+ 
+});
+
+
+
+app.delete("/deleteOrders/:id", (req, res)  => 
+{
+
+let oid = mongo.ObjectId(req.params.id);
+
+
+  
+
+  db.collection("Orders").deleteOne({ _id : oid }, (err,result) =>
+  {
+    if(err) throw err;
+    res.send("Order deleted");
+console.log(result);
+  });
+
+
+ 
+});
+//Place Order
+app.post("/placeOrder",(req,res)=>
+{
+  console.log(req.body);
+
+  db.collection("Orders").insertOne(req.body,(err,result)=>
+  {
+    if(err) throw err;
+    res.send("success")
+  })
+})
+app.put("/updateOrder/:id",(req,res)=>
+{
+
+  let oid = mongo.ObjectId(req.params.id);
+  console.log(req.body);
+
+  db.collection("Orders").updateOne({ _id : oid },{$set:{
+    status:req.body.status,
+    bank_name:req.body.bank_name,
+    date:req.body.date,
+  }},(err,result)=>
+  {
+    if(err) throw err;
+    res.send("Order Updated")
+  })
+})
